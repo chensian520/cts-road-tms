@@ -1,6 +1,7 @@
 ﻿const APP_VERSION = "2026-06-09-i18n-cachefix-v13-restored";
 const STORAGE_KEY = "cts-road-freight-system-v1";
 const LANG_KEY = "cts-road-freight-lang";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxC1XK8RBoim3njZQY_Nyh5kBhWyRuyu1o0HwmnAjmJ4JF04db5kir1mIdPehoWlL1DSQ/exec";
 const SERVER_MODE = location.protocol === "http:" || location.protocol === "https:";
 let currentView = "dashboard";
 let remoteSaveTimer = null;
@@ -519,23 +520,76 @@ function scheduleRemoteSave() {
   remoteSaveTimer = setTimeout(saveRemoteState, 400);
 }
 
+function googleScriptEnabled() {
+  return /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/i.test(GOOGLE_SCRIPT_URL || "");
+}
+
+function getGoogleState() {
+  return new Promise((resolve, reject) => {
+    const callbackName = `ctsRoadTmsJsonp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement("script");
+    const timeout = window.setTimeout(() => {
+      delete window[callbackName];
+      script.remove();
+      reject(new Error("Google Sheets load timeout"));
+    }, 15000);
+    const separator = GOOGLE_SCRIPT_URL.includes("?") ? "&" : "?";
+    script.src = `${GOOGLE_SCRIPT_URL}${separator}action=load&callback=${callbackName}&v=${Date.now()}`;
+    script.async = true;
+    script.onerror = () => {
+      window.clearTimeout(timeout);
+      delete window[callbackName];
+      script.remove();
+      reject(new Error("Google Sheets script load failed"));
+    };
+    window[callbackName] = (payload) => {
+      window.clearTimeout(timeout);
+      delete window[callbackName];
+      script.remove();
+      resolve(payload);
+    };
+    document.body.appendChild(script);
+  });
+}
+
+function applyRemoteState(remote) {
+  state = {
+    ...remote,
+    shipments: (remote.shipments || []).map(normalizeShipment),
+    tasks: (remote.tasks || []).map(normalizeTask),
+    parsed: null,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  renderNav();
+  showView(currentView);
+}
+
 async function loadRemoteState() {
   if (!SERVER_MODE) return;
+  if (googleScriptEnabled()) {
+    try {
+      const payload = await getGoogleState();
+      const remote = payload && (payload.state || payload);
+      remoteStateLoaded = true;
+      if (remote && Array.isArray(remote.shipments)) {
+        applyRemoteState(remote);
+        showSyncStatus("Google Sheets 团队数据已加载", "green");
+      } else {
+        showSyncStatus("Google Sheets 已连接，正在初始化团队数据", "amber");
+        saveRemoteState();
+      }
+    } catch (error) {
+      showSyncStatus(`Google Sheets 未连接，当前为本地模式：${error.message}`, "amber");
+    }
+    return;
+  }
   try {
     const response = await fetch("/api/state", { cache: "no-store" });
     if (!response.ok) throw new Error(`Server returned ${response.status}`);
     const remote = await response.json();
     if (remote && Array.isArray(remote.shipments)) {
-      state = {
-        ...remote,
-        shipments: (remote.shipments || []).map(normalizeShipment),
-        tasks: (remote.tasks || []).map(normalizeTask),
-        parsed: null,
-      };
+      applyRemoteState(remote);
       remoteStateLoaded = true;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      renderNav();
-      showView(currentView);
       showSyncStatus("团队共享数据已加载", "green");
     }
   } catch (error) {
@@ -545,6 +599,24 @@ async function loadRemoteState() {
 
 async function saveRemoteState() {
   if (!SERVER_MODE) return;
+  if (googleScriptEnabled()) {
+    try {
+      await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "save",
+          user: localStorage.getItem("cts-road-user") || "team",
+          state: { ...state, parsed: null },
+        }),
+      });
+      showSyncStatus("已发送同步到 Google Sheets", "green");
+    } catch (error) {
+      showSyncStatus(`同步 Google Sheets 失败：${error.message}`, "red");
+    }
+    return;
+  }
   try {
     const response = await fetch("/api/state", {
       method: "POST",
