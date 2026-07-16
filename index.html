@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CTS Road Freight Control Tower</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">CTS</div>
+        <div>
+          <h1>Road Freight</h1>
+          <p>Operations Control Tower</p>
+        </div>
+      </div>
+      <nav id="nav"></nav>
+      <div class="side-note">
+        <strong data-i18n="systemLogicTitle">系统逻辑</strong>
+        <span data-i18n="systemLogicText">邮件/手动录入 → Inquiry → 客户确认 → Shipment → 在途/POD/AR → Dashboard</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <p id="pageSubtitle">一眼看清今天、风险、报价和回款。</p>
+          <p id="syncStatus" class="sync-status">本地模式：如需团队同步，请用 http://...:8765/ 打开</p>
+        </div>
+        <div class="top-actions">
+          <button id="langToggle" class="ghost">English</button>
+          <button id="seedBtn" class="ghost" data-i18n="reimportExcel">重新导入Excel数据</button>
+          <button id="exportBtn" data-i18n="exportJson">导出 JSON</button>
+        </div>
+      </header>
+
+      <section id="view-dashboard" class="view active"></section>
+      <section id="view-inbox" class="view"></section>
+      <section id="view-today" class="view"></section>
+      <section id="view-progress" class="view"></section>
+      <section id="view-shipments" class="view"></section>
+      <section id="view-rfq" class="view"></section>
+      <section id="view-search" class="view"></section>
+      <section id="view-ar" class="view"></section>
+      <section id="view-help" class="view"></section>
+    </main>
+  </div>
+
+  <template id="mailExample">
+Dear All,
+
+Additional informations.
+
+Client usually send 14-16 tons to Begunje. To Magdeburg, it is 5-7 tons. And to Gdansk and Redzikowo, they send around 19-21 tons.
+
+General cargo.
+Only curtain truck is acceptable.
+
+Subject: Re:Q3 Tender for Road freight //CTSHU-ROAD-2606-22
+This is a first inquiry from a new client Metyx.
+For each tranportation I would like to have 60-100 EUR for profit, if it would possible.
+Please send your offers until 19th June 2026 so that we could evaluate them and inform you about the results latest on 26th June 2026.
+
+Loading Addres
+Unloading Address
+Mode of Transport
+Period
+Frequency
+Q2 2026 price
+
+H-7400 Kaposvar, Dombovari Ut 3657/135.
+Begunje Na Gorenjskem Begunje 1 4275 Slovenia
+1 FTL / tautliner
+Q3 2026
+1 truck / week
+EUR 500
+
+H-7400 Kaposvar, Dombovari Ut 3657/135.
+Magdeburg August-Bebel Damm 24-30 39126 Germany
+1 FTL / tautliner
+Q3 2026
+n/a
+EUR 1 220
+
+H-7400 Kaposvar, Dombovari Ut 3657/135.
+Redzikowo ul. Przemyslowa 14 76-200 Poland
+1 FTL / tautliner
+Q3 2026
+1 truck / week (average)
+EUR 1 090
+
+H-7400 Kaposvar, Dombovari Ut 3657/135.
+Gdansk Mialki Szlak 25 Poland
+1 FTL / tautliner
+Q3 2026
+EUR 1 120
+  </template>
+
+  <script src="./imported-data.js?v=20260609" charset="utf-8"></script>
+  <script src="./app.js?v=20260706-inquiry-shipment-flow" charset="utf-8"></script>
+</body>
+</html>
