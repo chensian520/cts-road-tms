@@ -1,7 +1,7 @@
 ﻿const APP_VERSION = "2026-06-09-i18n-cachefix-v13-restored";
 const STORAGE_KEY = "cts-road-freight-system-v1";
 const LANG_KEY = "cts-road-freight-lang";
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxC1XK8RBoim3njZQY_Nyh5kBhWyRuyu1o0HwmnAjmJ4JF04db5kir1mIdPehoWlL1DSQ/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZv5OwKtjoQlZbxtsk2e8rRvA8q14gm5qRKuD3wd7kWXn1ngX0tG4faXKDDCh9clUe/exec";
 const SERVER_MODE = location.protocol === "http:" || location.protocol === "https:";
 let currentView = "dashboard";
 let remoteSaveTimer = null;
