@@ -1,4 +1,4 @@
-﻿const APP_VERSION = "2026-06-09-i18n-cachefix-v13-restored";
+const APP_VERSION = "2026-06-09-i18n-cachefix-v13-restored";
 const STORAGE_KEY = "cts-road-freight-system-v1";
 const LANG_KEY = "cts-road-freight-lang";
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZv5OwKtjoQlZbxtsk2e8rRvA8q14gm5qRKuD3wd7kWXn1ngX0tG4faXKDDCh9clUe/exec";
@@ -2128,10 +2128,38 @@ function shipmentTable(items) {
       <td>${s.route || [s.pickup, s.delivery].filter(Boolean).join(" → ") || "-"}</td>
       <td>${[recordDate(s) && `Inquiry ${recordDate(s)}`, confirmedDate(s) && isConfirmedShipment(s) && `Confirm ${confirmedDate(s)}`, s.followDue && dateText(s.followDue)].filter(Boolean).join("<br>") || "-"}</td>
       <td>${s.nextAction || "-"}</td>
-      <td><button class="small update-progress-btn" data-offer="${s.id}">${recordKind(s) === "Inquiry" ? "更新Inquiry" : "更新Shipment"}</button></td>
+      <td>
+        <button class="small update-progress-btn" data-offer="${escapeAttr(s.id)}">${recordKind(s) === "Inquiry" ? "更新Inquiry" : "更新Shipment"}</button>
+        <button class="small ghost delete-shipment-btn" data-offer="${escapeAttr(s.id)}">删除</button>
+      </td>
     </tr>`;
     }).join("")}</tbody>
   </table></div>`;
+}
+
+function deleteShipmentById(offerId) {
+  const shipment = state.shipments.find((s) => s.id === offerId);
+  if (!shipment) return;
+  const lineCount = (state.shipmentLines || []).filter((line) => line.offerId === offerId).length;
+  const taskCount = (state.tasks || []).filter((taskItem) => taskItem.offerId === offerId).length;
+  const arCount = (state.ar || []).filter((record) => record.offerId === offerId).length;
+  const details = [
+    `${shipment.id} / ${shipment.client || "-"}`,
+    lineCount ? `同时删除 ${lineCount} 条PO/派送明细` : "",
+    taskCount ? `同时删除 ${taskCount} 条相关任务` : "",
+    arCount ? `同时删除 ${arCount} 条AR记录` : "",
+  ].filter(Boolean).join("\n");
+  if (!confirm(`确定删除这票记录吗？\n\n${details}\n\n删除后会同步到Google Sheets。`)) return;
+  state.shipments = state.shipments.filter((s) => s.id !== offerId);
+  state.shipmentLines = (state.shipmentLines || []).filter((line) => line.offerId !== offerId);
+  state.tasks = (state.tasks || []).filter((taskItem) => taskItem.offerId !== offerId);
+  state.ar = (state.ar || []).filter((record) => record.offerId !== offerId);
+  if (sessionStorage.getItem("selectedOfferId") === offerId) sessionStorage.removeItem("selectedOfferId");
+  if (sessionStorage.getItem("progressSearch") === offerId) sessionStorage.removeItem("progressSearch");
+  if (sessionStorage.getItem("searchOfferId") === offerId) sessionStorage.removeItem("searchOfferId");
+  saveState();
+  renderNav();
+  renderShipments();
 }
 
 function renderRfq() {
@@ -2787,6 +2815,11 @@ document.addEventListener("click", (event) => {
   if (btn) {
     sessionStorage.setItem("selectedOfferId", btn.dataset.offer);
     showView("progress");
+    return;
+  }
+  const deleteShipment = event.target.closest(".delete-shipment-btn");
+  if (deleteShipment) {
+    deleteShipmentById(deleteShipment.dataset.offer);
     return;
   }
   const editNote = event.target.closest(".edit-note-btn");
