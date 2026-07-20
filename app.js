@@ -1,4 +1,4 @@
-const APP_VERSION = "2026-06-09-i18n-cachefix-v13-restored";
+﻿const APP_VERSION = "2026-06-09-i18n-cachefix-v13-restored";
 const STORAGE_KEY = "cts-road-freight-system-v1";
 const LANG_KEY = "cts-road-freight-lang";
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZv5OwKtjoQlZbxtsk2e8rRvA8q14gm5qRKuD3wd7kWXn1ngX0tG4faXKDDCh9clUe/exec";
@@ -2489,6 +2489,7 @@ function renderProgress() {
         <div class="toolbar">
           <button id="addStopBtn">新增派送点/PO</button>
           <button id="deleteStopBtn" class="ghost" ${selectedLine ? "" : "disabled"}>删除选中明细</button>
+          <button id="deleteCurrentShipmentBtn" class="ghost">删除当前Inquiry/Shipment</button>
         </div>
         ${stopsWorkbenchTable(lines, selectedLine)}
       </div>
@@ -2545,6 +2546,8 @@ function renderProgress() {
   }
   const deleteStop = document.getElementById("deleteStopBtn");
   if (deleteStop && selectedLine) deleteStop.onclick = () => deleteShipmentLine(selectedLine.excelRow);
+  const deleteCurrentShipment = document.getElementById("deleteCurrentShipmentBtn");
+  if (deleteCurrentShipment && shipment) deleteCurrentShipment.onclick = () => deleteShipmentById(shipment.id);
   const saveStop = document.getElementById("saveStopBtn");
   if (saveStop && shipment) saveStop.onclick = () => saveStopForm(shipment.id);
 }
