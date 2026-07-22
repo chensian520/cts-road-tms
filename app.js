@@ -362,7 +362,7 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const saved = JSON.parse(raw);
-      if (window.IMPORTED_DATA && (saved.appVersion !== APP_VERSION || saved.generatedAt !== window.IMPORTED_DATA.generatedAt || !saved.shipmentLines)) {
+      if (window.IMPORTED_DATA && !saved.shipmentLines) {
         return importInitialData();
       }
       return saved;
@@ -510,6 +510,8 @@ function normalizeDueValue(value) {
 }
 
 function saveState() {
+  state.updatedAt = new Date().toISOString();
+  state.appVersion = APP_VERSION;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   scheduleRemoteSave();
 }
@@ -564,6 +566,27 @@ function applyRemoteState(remote) {
   showView(currentView);
 }
 
+function localStateSnapshot() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function stateTime(value) {
+  const time = Date.parse(value || "");
+  return Number.isFinite(time) ? time : 0;
+}
+
+function shouldKeepLocalState(remote) {
+  const local = localStateSnapshot();
+  if (!local || !Array.isArray(local.shipments)) return false;
+  const localTime = stateTime(local.updatedAt);
+  const remoteTime = stateTime(remote?.updatedAt);
+  return localTime && (!remoteTime || localTime > remoteTime);
+}
+
 async function loadRemoteState() {
   if (!SERVER_MODE) return;
   if (googleScriptEnabled()) {
@@ -572,8 +595,13 @@ async function loadRemoteState() {
       const remote = payload && (payload.state || payload);
       remoteStateLoaded = true;
       if (remote && Array.isArray(remote.shipments)) {
-        applyRemoteState(remote);
-        showSyncStatus("Google Sheets 团队数据已加载", "green");
+        if (shouldKeepLocalState(remote)) {
+          showSyncStatus("本地有较新的修改，已保留并重新提交到 Google Sheets", "amber");
+          saveRemoteState();
+        } else {
+          applyRemoteState(remote);
+          showSyncStatus("Google Sheets 团队数据已加载", "green");
+        }
       } else {
         showSyncStatus("Google Sheets 已连接，正在初始化团队数据", "amber");
         saveRemoteState();
@@ -588,9 +616,14 @@ async function loadRemoteState() {
     if (!response.ok) throw new Error(`Server returned ${response.status}`);
     const remote = await response.json();
     if (remote && Array.isArray(remote.shipments)) {
-      applyRemoteState(remote);
       remoteStateLoaded = true;
-      showSyncStatus("团队共享数据已加载", "green");
+      if (shouldKeepLocalState(remote)) {
+        showSyncStatus("本地有较新的修改，已保留并重新提交到团队数据库", "amber");
+        saveRemoteState();
+      } else {
+        applyRemoteState(remote);
+        showSyncStatus("团队共享数据已加载", "green");
+      }
     }
   } catch (error) {
     showSyncStatus(`共享服务器未连接，当前为本地模式：${error.message}`, "amber");
@@ -608,10 +641,10 @@ async function saveRemoteState() {
         body: JSON.stringify({
           action: "save",
           user: localStorage.getItem("cts-road-user") || "team",
-          state: { ...state, parsed: null },
+          state: { ...state, parsed: null, updatedAt: state.updatedAt || new Date().toISOString(), appVersion: APP_VERSION },
         }),
       });
-      showSyncStatus("已发送同步到 Google Sheets", "green");
+      showSyncStatus("已提交保存到 Google Sheets；刷新时会优先保留最新修改", "green");
     } catch (error) {
       showSyncStatus(`同步 Google Sheets 失败：${error.message}`, "red");
     }
